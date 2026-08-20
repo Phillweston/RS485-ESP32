@@ -1,0 +1,87 @@
+substitutions:
+  # Set these to the StickS3 GPIOs wired to the TTL-RS485 converter.
+  rs485_tx_pin: GPIO10
+  rs485_rx_pin: GPIO9
+
+esphome:
+  name: fsc2a-sliding-door
+  friendly_name: FSC-2A Sliding Door
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: ESP32S3
+  framework: { type: arduino }
+
+logger:
+api:
+ota:
+  - platform: esphome
+wifi:
+  ap:
+    ssid: "FSC-2A Door Setup"
+    password: !secret fallback_ap_password
+    ap_timeout: 15s
+
+web_server:
+  port: 80
+  version: 3
+  local: true
+  css_include: web.css
+
+uart:
+  id: rs485_uart
+  tx_pin: ${rs485_tx_pin}
+  rx_pin: ${rs485_rx_pin}
+  baud_rate: 115200
+  parity: NONE
+  stop_bits: 1
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [fsc2a]
+
+fsc2a:
+  id: fsc2a_controller
+  uart_id: rs485_uart
+  slave_address: 1
+
+cover:
+  - platform: template
+    name: "Sliding Door"
+    device_class: door
+    lambda: |-
+      return id(fsc2a_controller)->online() ? 0.5f : NAN;
+    assumed_state: true
+    open_action:
+      - lambda: 'id(fsc2a_controller)->move_relative(false);'
+    close_action:
+      - lambda: 'id(fsc2a_controller)->move_relative(true);'
+    stop_action:
+      - lambda: 'id(fsc2a_controller)->stop();'
+
+button:
+  - platform: template
+    name: "Set Door Position Zero"
+    on_press:
+      - lambda: 'id(fsc2a_controller)->set_zero();'
+
+sensor:
+  - platform: template
+    name: "Door Position"
+    unit_of_measurement: mm
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: 'return id(fsc2a_controller)->position();'
+  - platform: template
+    name: "Door Speed"
+    unit_of_measurement: mm/s
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: 'return id(fsc2a_controller)->speed();'
+
+binary_sensor:
+  - platform: template
+    name: "FSC-2A Online"
+    lambda: 'return id(fsc2a_controller)->online();'
