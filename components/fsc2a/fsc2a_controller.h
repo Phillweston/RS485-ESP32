@@ -1,5 +1,6 @@
 #pragma once
 
+#include "esphome/components/network/ip_address.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/component.h"
 
@@ -31,6 +32,8 @@ class Fsc2aController : public Component, public uart::UARTDevice {
   uint32_t status() const { return this->status_; }
 
  protected:
+  static constexpr uint8_t PAGE_COUNT = 4;
+
   uint16_t crc16_(const uint8_t *data, size_t length);
   void send_(const uint8_t *data, size_t length);
   bool read_frame_(uint8_t *frame, size_t expected);
@@ -42,7 +45,16 @@ class Fsc2aController : public Component, public uart::UARTDevice {
   bool online_{false};
   uint32_t last_poll_{0};
   uint32_t last_tx_{0};
+  uint32_t last_screen_check_{0};
   std::string setup_ap_password_;
+  uint8_t page_{0};
+  bool screen_dirty_{true};
+  bool previous_wifi_connected_{false};
+  bool previous_ap_active_{false};
+  bool previous_api_connected_{false};
+  network::IPAddress previous_ip_;
+
+  void handle_buttons_();
   void update_display_();
 };
 

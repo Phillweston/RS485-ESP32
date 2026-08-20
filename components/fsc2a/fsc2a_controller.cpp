@@ -14,10 +14,8 @@ void Fsc2aController::setup() {
   auto cfg = M5.config();
   M5.begin(cfg);
   M5.Display.setRotation(1);
-  M5.Display.setTextSize(2);
   M5.Display.fillScreen(TFT_BLACK);
   update_display_();
-  this->set_timeout(1000, [this]() { this->poll(); });
 }
 
 uint16_t Fsc2aController::crc16_(const uint8_t *data, size_t length) {
@@ -89,7 +87,10 @@ void Fsc2aController::poll() {
   send_(f, sizeof(f));
   uint8_t r[21];
   if (!read_frame_(r, sizeof(r))) {
-    online_ = false;
+    if (online_) {
+      online_ = false;
+      screen_dirty_ = true;
+    }
     return;
   }
   status_ = (uint32_t(r[3]) << 24) | (uint32_t(r[4]) << 16) |
@@ -99,44 +100,98 @@ void Fsc2aController::poll() {
   current_speed_ = (uint32_t(r[11]) << 24) | (uint32_t(r[12]) << 16) |
                    (uint32_t(r[13]) << 8) | r[14];
   online_ = true;
-  update_display_();
+  screen_dirty_ = true;
 }
 
 void Fsc2aController::update_display_() {
-  M5.Display.fillScreen(TFT_BLACK);
-  M5.Display.setCursor(4, 6);
-  M5.Display.setTextColor(TFT_CYAN);
-  M5.Display.print("FSC-2A DOOR");
+  static const char *const PAGE_NAMES[] = {"HOME", "FSC-2A", "MQTT", "WIFI"};
   auto *wifi = esphome::wifi::global_wifi_component;
-  bool connected = wifi && wifi->is_connected();
-  bool ap = wifi && wifi->is_ap_active();
-  M5.Display.setCursor(4, 30);
-  M5.Display.setTextColor(connected ? TFT_GREEN : (ap ? TFT_YELLOW : TFT_RED));
-  M5.Display.printf("WiFi: %s",
-                    connected ? "CONNECTED" : (ap ? "SETUP AP" : "WAITING"));
-  M5.Display.setTextColor(TFT_WHITE);
-  M5.Display.setCursor(4, 52);
-  if (connected) {
-    char ip[32]{};
-    wifi->wifi_sta_ip_addresses()[0].str_to(ip);
-    M5.Display.printf("IP: %s", ip);
-  } else if (ap)
-    M5.Display.printf("AP: FSC-2A Door Setup");
-  else
-    M5.Display.print("AP starting...");
-  M5.Display.setCursor(4, 78);
-  M5.Display.setTextColor(online_ ? TFT_GREEN : TFT_RED);
-  M5.Display.printf("Modbus: %s", online_ ? "ONLINE" : "OFFLINE");
-  M5.Display.setTextColor(TFT_WHITE);
-  M5.Display.setCursor(4, 104);
-  M5.Display.printf("POS %lu mm  SPD %lu", (unsigned long)position_,
-                    (unsigned long)current_speed_);
-  M5.Display.setCursor(4, 130);
-  M5.Display.printf("HA API: %s",
-                    esphome::api::global_api_server &&
-                            esphome::api::global_api_server->is_connected()
-                        ? "CONNECTED"
-                        : "WAITING");
+  const bool wifi_connected = wifi && wifi->is_connected();
+  const bool ap_active = wifi && wifi->is_ap_active();
+  const bool api_connected = esphome::api::global_api_server &&
+                             esphome::api::global_api_server->is_connected();
+
+  M5.Display.fillScreen(TFT_BLACK);
+  M5.Display.setTextSize(1);
+  M5.Display.setCursor(4, 4);
+  M5.Display.setTextColor(TFT_CYAN);
+  M5.Display.printf("FSC DOOR  %s", PAGE_NAMES[page_]);
+  M5.Display.drawFastHLine(0, 16, M5.Display.width(), 0x39E7);
+
+  if (page_ == 0) {
+    M5.Display.setTextSize(2);
+    M5.Display.setCursor(4, 25);
+    M5.Display.setTextColor(online_ ? TFT_GREEN : TFT_RED);
+    M5.Display.print(online_ ? "READY" : "OFFLINE");
+    M5.Display.setTextSize(1);
+    M5.Display.setTextColor(TFT_WHITE);
+    M5.Display.setCursor(4, 55);
+    M5.Display.printf("Position: %lu mm",
+                      static_cast<unsigned long>(position_));
+    M5.Display.setCursor(4, 70);
+    M5.Display.printf("Speed:    %lu mm/s",
+                      static_cast<unsigned long>(current_speed_));
+    M5.Display.setCursor(4, 85);
+    M5.Display.printf("HA: %s", api_connected ? "CONNECTED" : "WAITING");
+  } else if (page_ == 1) {
+    M5.Display.setTextColor(online_ ? TFT_GREEN : TFT_RED);
+    M5.Display.setCursor(4, 25);
+    M5.Display.printf("Modbus: %s", online_ ? "ONLINE" : "OFFLINE");
+    M5.Display.setTextColor(TFT_WHITE);
+    M5.Display.setCursor(4, 43);
+    M5.Display.printf("Slave: %u", slave_);
+    M5.Display.setCursor(4, 58);
+    M5.Display.printf("Status: 0x%08lX", static_cast<unsigned long>(status_));
+    M5.Display.setCursor(4, 73);
+    M5.Display.printf("Position: %lu mm",
+                      static_cast<unsigned long>(position_));
+    M5.Display.setCursor(4, 88);
+    M5.Display.printf("Speed: %lu mm/s",
+                      static_cast<unsigned long>(current_speed_));
+  } else if (page_ == 2) {
+    M5.Display.setTextColor(TFT_YELLOW);
+    M5.Display.setCursor(4, 28);
+    M5.Display.print("MQTT: DISABLED");
+    M5.Display.setTextColor(TFT_WHITE);
+    M5.Display.setCursor(4, 48);
+    M5.Display.print("Home Assistant uses");
+    M5.Display.setCursor(4, 63);
+    M5.Display.print("ESPHome native API.");
+    M5.Display.setCursor(4, 83);
+    M5.Display.printf("API: %s", api_connected ? "CONNECTED" : "WAITING");
+  } else {
+    M5.Display.setCursor(4, 25);
+    M5.Display.setTextColor(wifi_connected ? TFT_GREEN : TFT_YELLOW);
+    M5.Display.printf("WiFi: %s", wifi_connected
+                                      ? "CONNECTED"
+                                      : (ap_active ? "SETUP AP" : "WAITING"));
+    M5.Display.setTextColor(TFT_WHITE);
+    if (wifi_connected) {
+      char ssid[wifi::SSID_BUFFER_SIZE]{};
+      char ip[network::IP_ADDRESS_BUFFER_SIZE]{};
+      wifi->wifi_ssid_to(ssid);
+      wifi->wifi_sta_ip_addresses()[0].str_to(ip);
+      M5.Display.setCursor(4, 45);
+      M5.Display.printf("SSID: %.18s", ssid);
+      M5.Display.setCursor(4, 62);
+      M5.Display.printf("IP: %s", ip);
+      M5.Display.setCursor(4, 79);
+      M5.Display.print("Web: port 80");
+    } else if (ap_active) {
+      M5.Display.setCursor(4, 45);
+      M5.Display.print("AP: FSC-2A Door Setup");
+      M5.Display.setCursor(4, 62);
+      M5.Display.print("IP: 192.168.4.1");
+    } else {
+      M5.Display.setCursor(4, 45);
+      M5.Display.print("Setup AP starting...");
+    }
+  }
+
+  M5.Display.drawFastHLine(0, 108, M5.Display.width(), 0x39E7);
+  M5.Display.setTextColor(0xBDF7);
+  M5.Display.setCursor(4, 114);
+  M5.Display.printf("KEY2 <  %u/%u  > KEY1", page_ + 1, PAGE_COUNT);
 }
 
 bool Fsc2aController::read_frame_(uint8_t *frame, size_t expected) {
@@ -149,6 +204,48 @@ bool Fsc2aController::read_frame_(uint8_t *frame, size_t expected) {
   uint16_t got = frame[expected - 2] | (uint16_t(frame[expected - 1]) << 8);
   return got == crc16_(frame, expected - 2);
 }
-void Fsc2aController::loop() {}
+void Fsc2aController::handle_buttons_() {
+  M5.update();
+  if (M5.BtnA.wasPressed()) {
+    page_ = (page_ + 1) % PAGE_COUNT;
+    screen_dirty_ = true;
+  }
+  if (M5.BtnB.wasPressed()) {
+    page_ = (page_ + PAGE_COUNT - 1) % PAGE_COUNT;
+    screen_dirty_ = true;
+  }
+}
+
+void Fsc2aController::loop() {
+  handle_buttons_();
+  poll();
+
+  const uint32_t now = millis();
+  if (now - last_screen_check_ >= 500) {
+    last_screen_check_ = now;
+    auto *wifi = esphome::wifi::global_wifi_component;
+    const bool wifi_connected = wifi && wifi->is_connected();
+    const bool ap_active = wifi && wifi->is_ap_active();
+    const bool api_connected = esphome::api::global_api_server &&
+                               esphome::api::global_api_server->is_connected();
+    const network::IPAddress ip = wifi_connected
+                                      ? wifi->wifi_sta_ip_addresses()[0]
+                                      : network::IPAddress();
+    if (wifi_connected != previous_wifi_connected_ ||
+        ap_active != previous_ap_active_ ||
+        api_connected != previous_api_connected_ || ip != previous_ip_) {
+      previous_wifi_connected_ = wifi_connected;
+      previous_ap_active_ = ap_active;
+      previous_api_connected_ = api_connected;
+      previous_ip_ = ip;
+      screen_dirty_ = true;
+    }
+  }
+
+  if (screen_dirty_) {
+    screen_dirty_ = false;
+    update_display_();
+  }
+}
 }  // namespace fsc2a
 }  // namespace esphome
