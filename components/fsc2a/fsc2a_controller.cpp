@@ -181,6 +181,8 @@ void Fsc2aController::update_display_() {
       M5.Display.setCursor(4, 45);
       M5.Display.print("AP: FSC-2A Door Setup");
       M5.Display.setCursor(4, 62);
+      M5.Display.printf("Password: %s", setup_ap_password_.c_str());
+      M5.Display.setCursor(4, 79);
       M5.Display.print("IP: 192.168.4.1");
     } else {
       M5.Display.setCursor(4, 45);

@@ -46,6 +46,7 @@ fsc2a:
   id: fsc2a_controller
   uart_id: rs485_uart
   slave_address: 1
+  setup_ap_password: !secret fallback_ap_password
 
 cover:
   - platform: template

@@ -6,6 +6,7 @@ from esphome.const import CONF_ID
 DEPENDENCIES = ["uart", "wifi", "api"]
 
 CONF_SLAVE_ADDRESS = "slave_address"
+CONF_SETUP_AP_PASSWORD = "setup_ap_password"
 
 fsc2a_ns = cg.esphome_ns.namespace("fsc2a")
 Fsc2aController = fsc2a_ns.class_(
@@ -17,6 +18,7 @@ CONFIG_SCHEMA = (
         {
             cv.GenerateID(): cv.declare_id(Fsc2aController),
             cv.Optional(CONF_SLAVE_ADDRESS, default=1): cv.int_range(min=1, max=247),
+            cv.Required(CONF_SETUP_AP_PASSWORD): cv.string_strict,
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
@@ -29,5 +31,6 @@ async def to_code(config):
     await cg.register_component(var, config)
     await uart.register_uart_device(var, config)
     cg.add(var.set_slave(config[CONF_SLAVE_ADDRESS]))
+    cg.add(var.set_setup_ap_password(config[CONF_SETUP_AP_PASSWORD]))
 
     cg.add_library("M5Unified", None)

@@ -52,7 +52,8 @@ The footer shows the current page number and button directions: `KEY2 < n/4 > KE
 
 - Connected, setup AP, or waiting state.
 - When connected: Wi-Fi SSID, assigned IP address, and Web Server port.
-- In setup mode: setup AP name and `192.168.4.1` configuration address.
+- In setup mode: setup AP name, the configured default AP password, and the
+  `192.168.4.1` configuration address.
 
 ## Build
 
