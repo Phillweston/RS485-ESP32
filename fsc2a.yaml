@@ -1,15 +1,14 @@
 substitutions:
-  # Set these to the StickS3 GPIOs wired to the TTL-RS485 converter.
-  rs485_tx_pin: GPIO10
-  rs485_rx_pin: GPIO9
+  # M5StickC Plus SE Grove connector: yellow=GPIO32, white=GPIO33.
+  rs485_tx_pin: GPIO33
+  rs485_rx_pin: GPIO32
 
 esphome:
   name: fsc2a-sliding-door
   friendly_name: FSC-2A Sliding Door
 
 esp32:
-  board: esp32-s3-devkitc-1
-  variant: ESP32S3
+  board: m5stick-c
   framework: { type: arduino }
 
 logger:

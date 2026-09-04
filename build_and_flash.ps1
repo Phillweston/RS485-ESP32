@@ -31,7 +31,7 @@ if ($CompileOnly) {
     & uvx --python 3.13 esphome compile $config
 } else {
     if ($Port -notin [System.IO.Ports.SerialPort]::GetPortNames()) {
-        throw "Serial port $Port was not found. Use -Port COMx to select the StickS3 port."
+        throw "Serial port $Port was not found. Use -Port COMx to select the M5StickC Plus SE port."
     }
 
     Write-Host "[FSC-2A] Flashing device on $Port."

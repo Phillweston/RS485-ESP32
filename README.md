@@ -4,11 +4,11 @@ This project exposes an FSC-2A single-axis Modbus RTU controller to Home Assista
 
 ## Hardware
 
-- M5Stack StickS3 (ESP32-S3) UART TX/RX connect to the TTL side of an RS485 transceiver (MAX3485/SP3485 class).
+- M5Stack M5StickC Plus SE UART TX/RX connect to the TTL side of an RS485 transceiver (MAX3485/SP3485 class).
 - Transceiver A/B connect to FSC-2A RJ45 pins 4/5 (485_A/485_B).
-- StickS3 Grove uses GPIO9 (yellow) and GPIO10 (white). The YAML maps GPIO10=TX and GPIO9=RX; swap them if your converter labels require the opposite UART direction.
+- M5StickC Plus SE Grove uses GPIO32 (yellow) and GPIO33 (white). The YAML maps GPIO33=TX and GPIO32=RX; swap them if your converter labels require the opposite UART direction.
 - The configuration starts the fallback setup AP (`FSC-2A Door Setup`) when no saved Wi-Fi network is available, and provides the local ESPHome Web Server on port 80.
-- Connect StickS3 GND to converter GND, converter TTL-TX to StickS3 RX, and converter TTL-RX to StickS3 TX. Do not connect the FSC-2A A/B lines directly to StickS3 pins.
+- Connect M5StickC GND to converter GND, converter TTL-TX to GPIO32 RX, and converter TTL-RX to GPIO33 TX. Do not connect the FSC-2A A/B lines directly to M5StickC pins.
 - The TTL-RS485 converter must provide automatic transmit/receive direction. If it exposes DE and /RE, they need to be driven by a GPIO or tied according to the module design; the current YAML does not control a DE pin.
 - Use a common signal ground and terminate the bus only at its physical ends.
 
@@ -20,14 +20,14 @@ This project exposes an FSC-2A single-axis Modbus RTU controller to Home Assista
 
 The controller enforces a minimum 20 ms gap between frames and polls every 100 ms. The supplied implementation uses slave address 1 and a relative travel distance of 50 mm; adjust the constants in `fsc2a.yaml` or expose them as number entities for your mechanism.
 
-## StickS3 screen pages
+## M5StickC Plus SE screen pages
 
 The two physical buttons cycle through four pages. Navigation wraps around at the first and last page:
 
-- `KEY1` / GPIO11 / `M5.BtnA`: next page.
-- `KEY2` / GPIO12 / `M5.BtnB`: previous page.
+- `BTN-A` / front button / `M5.BtnA`: next page.
+- `BTN-B` / side button / `M5.BtnB`: previous page.
 
-The footer shows the current page number and button directions: `KEY2 < n/4 > KEY1`.
+The footer shows the current page number and button directions: `BTN-B < n/4 > BTN-A`.
 
 ### 1. Home
 

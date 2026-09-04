@@ -193,7 +193,7 @@ void Fsc2aController::update_display_() {
   M5.Display.drawFastHLine(0, 108, M5.Display.width(), 0x39E7);
   M5.Display.setTextColor(0xBDF7);
   M5.Display.setCursor(4, 114);
-  M5.Display.printf("KEY2 <  %u/%u  > KEY1", page_ + 1, PAGE_COUNT);
+  M5.Display.printf("BTN-B <  %u/%u  > BTN-A", page_ + 1, PAGE_COUNT);
 }
 
 bool Fsc2aController::read_frame_(uint8_t *frame, size_t expected) {
